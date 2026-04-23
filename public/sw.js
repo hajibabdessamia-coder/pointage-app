@@ -1,5 +1,5 @@
 const CACHE = 'pointage-v1';
-const PAGES = ['/', '/workers/', '/pointage/', '/reports/', '/archive/', '/settings/', '/login/'];
+const PAGES = ['/', '/workers', '/pointage', '/reports', '/archive', '/settings', '/login'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
