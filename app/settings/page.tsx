@@ -10,7 +10,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setOffDays(getSettings().weeklyOffDays);
+    getSettings().then((s) => setOffDays(s.weeklyOffDays));
   }, []);
 
   function toggleDay(day: number) {
@@ -20,8 +20,8 @@ export default function SettingsPage() {
     setSaved(false);
   }
 
-  function handleSave() {
-    saveSettings({ weeklyOffDays: offDays });
+  async function handleSave() {
+    await saveSettings({ weeklyOffDays: offDays });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   }

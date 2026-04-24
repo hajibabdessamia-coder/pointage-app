@@ -86,6 +86,11 @@ const T = {
     save_settings: 'حفظ الإعدادات', settings_saved: 'تم الحفظ بنجاح',
     settings_note: 'الأيام المحددة لن تُحسب ضمن أيام العمل في التقارير.',
     annual_leave: 'إجازة سنوية', days_annual_leave: 'يوم إجازة سنوية',
+    annual_reports_title: 'التقارير السنوية', annual_reports_sub: 'ملخص حضور العمال على مدار السنة الكاملة',
+    annual_export_excel: '📊 Excel سنوي', annual_print_pdf: '📄 PDF سنوي',
+    annual_print_all: '📄 طباعة السنوي للكل', annual_export_all_excel: '📊 Excel سنوي للكل',
+    col_month: 'الشهر', col_working_days: 'أيام العمل', annual_total: 'المجموع السنوي',
+    back_to_monthly: '← التقارير الشهرية', view_annual: 'التقارير السنوية ←',
   },
   fr: {
     nav_dashboard: 'Tableau de bord', nav_workers: 'Employés', nav_attendance: 'Pointage',
@@ -149,6 +154,11 @@ const T = {
     save_settings: 'Enregistrer', settings_saved: 'Enregistré avec succès',
     settings_note: 'Les jours sélectionnés ne seront pas comptés comme jours travaillés dans les rapports.',
     annual_leave: 'Congé annuel', days_annual_leave: 'j. congé annuel',
+    annual_reports_title: 'Rapports annuels', annual_reports_sub: 'Résumé annuel de présence par employé',
+    annual_export_excel: '📊 Excel annuel', annual_print_pdf: '📄 PDF annuel',
+    annual_print_all: '📄 Imprimer annuel tout', annual_export_all_excel: '📊 Excel annuel tout',
+    col_month: 'Mois', col_working_days: 'Jours travaillés', annual_total: 'Total annuel',
+    back_to_monthly: '← Rapports mensuels', view_annual: 'Rapports annuels →',
   },
   en: {
     nav_dashboard: 'Dashboard', nav_workers: 'Workers', nav_attendance: 'Attendance',
@@ -212,6 +222,11 @@ const T = {
     save_settings: 'Save Settings', settings_saved: 'Saved successfully',
     settings_note: 'Selected days will not be counted as working days in reports.',
     annual_leave: 'Annual Leave', days_annual_leave: 'annual leave',
+    annual_reports_title: 'Annual Reports', annual_reports_sub: 'Full-year attendance summary per worker',
+    annual_export_excel: '📊 Annual Excel', annual_print_pdf: '📄 Annual PDF',
+    annual_print_all: '📄 Print all annual', annual_export_all_excel: '📊 Annual Excel all',
+    col_month: 'Month', col_working_days: 'Working Days', annual_total: 'Annual Total',
+    back_to_monthly: '← Monthly Reports', view_annual: 'Annual Reports →',
   },
 } as const;
 

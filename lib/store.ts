@@ -1,128 +1,183 @@
 'use client';
 
+import { supabase } from './supabase';
 import { Worker, AttendanceRecord, AppSettings } from './types';
 
-const WORKERS_KEY = 'pointage_workers';
-const ARCHIVED_KEY = 'pointage_archived_workers';
-const ATTENDANCE_KEY = 'pointage_attendance';
+// ─── Workers ────────────────────────────────────────────────────────────────
 
-// يُرجع العمال النشطين فقط — بدون تكرار
-export function getWorkers(): Worker[] {
-  if (typeof window === 'undefined') return [];
-  const raw: Worker[] = JSON.parse(localStorage.getItem(WORKERS_KEY) || '[]');
-  // نحذف أي تكرار في الـ id
-  const seen = new Set<string>();
-  const unique = raw.filter((w) => {
-    if (seen.has(w.id)) return false;
-    seen.add(w.id);
-    return true;
-  });
-  // إذا وُجد تكرار نصلحه مباشرة في localStorage
-  if (unique.length !== raw.length) {
-    localStorage.setItem(WORKERS_KEY, JSON.stringify(unique));
-  }
-  return unique;
+export async function getWorkers(): Promise<Worker[]> {
+  const { data } = await supabase
+    .from('workers')
+    .select('*')
+    .is('archived_at', null)
+    .order('created_at');
+  return (data || []).map(dbToWorker);
 }
 
-export function saveWorkers(workers: Worker[]): void {
-  localStorage.setItem(WORKERS_KEY, JSON.stringify(workers));
+export async function getArchivedWorkers(): Promise<Worker[]> {
+  const { data } = await supabase
+    .from('workers')
+    .select('*')
+    .not('archived_at', 'is', null)
+    .order('archived_at', { ascending: false });
+  return (data || []).map(dbToWorker);
 }
 
-export function getArchivedWorkers(): Worker[] {
-  if (typeof window === 'undefined') return [];
-  return JSON.parse(localStorage.getItem(ARCHIVED_KEY) || '[]');
+export async function addWorker(worker: Omit<Worker, 'id'>): Promise<Worker | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data, error } = await supabase
+    .from('workers')
+    .insert({ ...workerToDB(worker as Worker), user_id: user.id })
+    .select()
+    .single();
+  if (error) { console.error(error); return null; }
+  return dbToWorker(data);
 }
 
-function saveArchivedWorkers(workers: Worker[]): void {
-  localStorage.setItem(ARCHIVED_KEY, JSON.stringify(workers));
+export async function updateWorker(worker: Worker): Promise<void> {
+  await supabase.from('workers').update(workerToDB(worker)).eq('id', worker.id);
 }
 
-export function archiveWorker(id: string): void {
-  const workers = getWorkers();
-  const worker = workers.find((w) => w.id === id);
-  if (!worker) return;
-  saveWorkers(workers.filter((w) => w.id !== id));
-  const archived = getArchivedWorkers();
-  saveArchivedWorkers([...archived, { ...worker, archivedAt: new Date().toISOString() }]);
+export async function archiveWorker(id: string): Promise<void> {
+  await supabase
+    .from('workers')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id);
 }
 
-export function restoreWorker(id: string): void {
-  const archived = getArchivedWorkers();
-  const worker = archived.find((w) => w.id === id);
-  if (!worker) return;
-  saveArchivedWorkers(archived.filter((w) => w.id !== id));
-  const { archivedAt: _, ...active } = worker;
-  saveWorkers([...getWorkers(), active]);
+export async function restoreWorker(id: string): Promise<void> {
+  await supabase.from('workers').update({ archived_at: null }).eq('id', id);
 }
 
-export function deleteArchivedWorker(id: string): void {
-  saveArchivedWorkers(getArchivedWorkers().filter((w) => w.id !== id));
-  saveAttendance(getAttendance().filter((r) => r.workerId !== id));
+export async function deleteArchivedWorker(id: string): Promise<void> {
+  await supabase.from('workers').delete().eq('id', id);
 }
 
-// يُرجع سجلات الحضور — بدون تكرار لنفس العامل في نفس اليوم
-export function getAttendance(): AttendanceRecord[] {
-  if (typeof window === 'undefined') return [];
-  const raw: AttendanceRecord[] = JSON.parse(localStorage.getItem(ATTENDANCE_KEY) || '[]');
-  // لكل (workerId + date) نحتفظ بآخر سجل فقط
-  const map = new Map<string, AttendanceRecord>();
-  for (const r of raw) {
-    map.set(`${r.workerId}_${r.date}`, r);
-  }
-  const unique = Array.from(map.values());
-  if (unique.length !== raw.length) {
-    localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(unique));
-  }
-  return unique;
+// ─── Attendance ──────────────────────────────────────────────────────────────
+
+export async function getAttendance(): Promise<AttendanceRecord[]> {
+  const { data } = await supabase.from('attendance_records').select('*');
+  return (data || []).map(dbToRecord);
 }
 
-export function saveAttendance(records: AttendanceRecord[]): void {
-  localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(records));
+export async function getAttendanceByDate(date: string): Promise<AttendanceRecord[]> {
+  const { data } = await supabase
+    .from('attendance_records')
+    .select('*')
+    .eq('date', date);
+  return (data || []).map(dbToRecord);
 }
 
-export function getAttendanceByDate(date: string): AttendanceRecord[] {
-  return getAttendance().filter((r) => r.date === date);
+export async function getAttendanceByWorker(workerId: string): Promise<AttendanceRecord[]> {
+  const { data } = await supabase
+    .from('attendance_records')
+    .select('*')
+    .eq('worker_id', workerId)
+    .order('date', { ascending: false });
+  return (data || []).map(dbToRecord);
 }
 
-export function getAttendanceByWorker(workerId: string): AttendanceRecord[] {
-  return getAttendance().filter((r) => r.workerId === workerId);
+export async function getAttendanceByWorkers(workerIds: string[]): Promise<AttendanceRecord[]> {
+  if (workerIds.length === 0) return [];
+  const { data } = await supabase
+    .from('attendance_records')
+    .select('*')
+    .in('worker_id', workerIds)
+    .order('date', { ascending: false });
+  return (data || []).map(dbToRecord);
 }
 
-export function getAttendanceByWorkerAndMonth(workerId: string, year: number, month: number): AttendanceRecord[] {
-  return getAttendance().filter((r) => {
-    const d = new Date(r.date);
-    return r.workerId === workerId && d.getFullYear() === year && d.getMonth() + 1 === month;
-  });
+export async function getAttendanceByYear(year: number): Promise<AttendanceRecord[]> {
+  const { data } = await supabase
+    .from('attendance_records')
+    .select('*')
+    .gte('date', `${year}-01-01`)
+    .lte('date', `${year}-12-31`);
+  return (data || []).map(dbToRecord);
 }
 
-const SETTINGS_KEY = 'pointage_settings';
-const DEFAULT_SETTINGS: AppSettings = { weeklyOffDays: [5] };
-
-export function getSettings(): AppSettings {
-  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    const parsed = JSON.parse(raw) as Partial<AppSettings>;
-    return {
-      weeklyOffDays: Array.isArray(parsed.weeklyOffDays) ? parsed.weeklyOffDays : [5],
-    };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
+export async function getAttendanceByWorkerAndMonth(
+  workerId: string, year: number, month: number
+): Promise<AttendanceRecord[]> {
+  const from = `${year}-${String(month).padStart(2, '0')}-01`;
+  const to   = `${year}-${String(month).padStart(2, '0')}-31`;
+  const { data } = await supabase
+    .from('attendance_records')
+    .select('*')
+    .eq('worker_id', workerId)
+    .gte('date', from)
+    .lte('date', to);
+  return (data || []).map(dbToRecord);
 }
 
-export function saveSettings(s: AppSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+export async function upsertAttendance(record: AttendanceRecord): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('attendance_records').upsert({
+    id: record.id,
+    user_id: user.id,
+    worker_id: record.workerId,
+    date: record.date,
+    status: record.status,
+    check_in: record.checkIn,
+    check_out: record.checkOut,
+    note: record.note,
+  }, { onConflict: 'worker_id,date' });
 }
 
-export function upsertAttendance(record: AttendanceRecord): void {
-  const all = getAttendance();
-  const idx = all.findIndex((r) => r.workerId === record.workerId && r.date === record.date);
-  if (idx >= 0) {
-    all[idx] = record;
-  } else {
-    all.push(record);
-  }
-  saveAttendance(all);
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+export async function getSettings(): Promise<AppSettings> {
+  const { data } = await supabase.from('app_settings').select('*').maybeSingle();
+  return { weeklyOffDays: data?.weekly_off_days ?? [5] };
+}
+
+export async function saveSettings(s: AppSettings): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('app_settings').upsert(
+    { user_id: user.id, weekly_off_days: s.weeklyOffDays },
+    { onConflict: 'user_id' }
+  );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function dbToWorker(row: Record<string, unknown>): Worker {
+  return {
+    id:          row.id as string,
+    name:        row.name as string,
+    position:    row.position as string,
+    department:  (row.department as string) || '',
+    phone:       (row.phone as string) || '',
+    startDate:   row.start_date as string,
+    photo:       (row.photo as string) || '',
+    archivedAt:  (row.archived_at as string) || undefined,
+  };
+}
+
+function workerToDB(w: Worker): Record<string, unknown> {
+  return {
+    id:          w.id,
+    name:        w.name,
+    position:    w.position,
+    department:  w.department || '',
+    phone:       w.phone || '',
+    start_date:  w.startDate,
+    photo:       w.photo || '',
+    archived_at: w.archivedAt || null,
+  };
+}
+
+function dbToRecord(row: Record<string, unknown>): AttendanceRecord {
+  return {
+    id:        row.id as string,
+    workerId:  row.worker_id as string,
+    date:      row.date as string,
+    status:    row.status as AttendanceRecord['status'],
+    checkIn:   (row.check_in as string) || '',
+    checkOut:  (row.check_out as string) || '',
+    note:      (row.note as string) || '',
+  };
 }

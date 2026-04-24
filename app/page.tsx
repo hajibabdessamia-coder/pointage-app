@@ -23,18 +23,20 @@ export default function Dashboard() {
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [todayRecords, setTodayRecords] = useState<AttendanceRecord[]>([]);
 
-  function loadData() {
-    const activeWorkers = getWorkers();
+  async function loadData() {
+    const activeWorkers = await getWorkers();
     const activeIds = new Set(activeWorkers.map((w) => w.id));
-    const activeToday = getAttendance().filter((r) => r.date === todayStr() && activeIds.has(r.workerId));
+    const allRecs = await getAttendance();
+    const activeToday = allRecs.filter((r) => r.date === todayStr() && activeIds.has(r.workerId));
     setWorkers(activeWorkers);
     setTodayRecords(activeToday);
   }
 
   useEffect(() => {
     loadData();
-    document.addEventListener('visibilitychange', loadData);
-    return () => document.removeEventListener('visibilitychange', loadData);
+    const handler = () => { loadData(); };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalWorkers = workers.length;

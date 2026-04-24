@@ -36,10 +36,14 @@ export default function PrintContent() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setWorkers(getWorkers());
-    setAllRecords(getAttendance());
-    setOffDays(getSettings().weeklyOffDays);
-    setReady(true);
+    async function init() {
+      const [ws, recs, settings] = await Promise.all([getWorkers(), getAttendance(), getSettings()]);
+      setWorkers(ws);
+      setAllRecords(recs);
+      setOffDays(settings.weeklyOffDays);
+      setReady(true);
+    }
+    init();
   }, []);
 
   const daysInMonth = new Date(year, month, 0).getDate();

@@ -5,7 +5,7 @@ import {
   getArchivedWorkers,
   restoreWorker,
   deleteArchivedWorker,
-  getAttendanceByWorker,
+  getAttendanceByWorkers,
 } from '../../lib/store';
 import { Worker, AttendanceRecord, AttendanceStatus } from '../../lib/types';
 import { useLang } from '../../components/LangProvider';
@@ -29,7 +29,7 @@ export default function ArchivePage() {
   const { t, lang } = useLang();
   const [archived, setArchived] = useState<Worker[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [recordsByWorker, setRecordsByWorker] = useState<Record<string, AttendanceRecord[]>>({});
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<'restore' | 'delete' | null>(null);
   const [recordPage, setRecordPage] = useState(1);
@@ -40,42 +40,54 @@ export default function ArchivePage() {
   };
 
   useEffect(() => {
-    setArchived(getArchivedWorkers());
+    async function init() {
+      const workers = await getArchivedWorkers();
+      setArchived(workers);
+      const allRecs = await getAttendanceByWorkers(workers.map((w) => w.id));
+      const byWorker: Record<string, AttendanceRecord[]> = {};
+      for (const rec of allRecs) {
+        if (!byWorker[rec.workerId]) byWorker[rec.workerId] = [];
+        byWorker[rec.workerId].push(rec);
+      }
+      setRecordsByWorker(byWorker);
+    }
+    init();
   }, []);
 
   function handleExpand(workerId: string) {
     if (expandedId === workerId) {
       setExpandedId(null);
-      setRecords([]);
       setRecordPage(1);
     } else {
-      const recs = getAttendanceByWorker(workerId).sort((a, b) => b.date.localeCompare(a.date));
-      setRecords(recs);
       setExpandedId(workerId);
       setRecordPage(1);
     }
   }
 
-  function handleRestore(id: string) {
-    restoreWorker(id);
-    setArchived(getArchivedWorkers());
+  async function handleRestore(id: string) {
+    await restoreWorker(id);
+    const workers = await getArchivedWorkers();
+    setArchived(workers);
+    setRecordsByWorker((prev) => { const next = { ...prev }; delete next[id]; return next; });
     if (expandedId === id) setExpandedId(null);
     setConfirmId(null);
     setConfirmAction(null);
   }
 
-  function handleDelete(id: string) {
-    deleteArchivedWorker(id);
-    setArchived(getArchivedWorkers());
+  async function handleDelete(id: string) {
+    await deleteArchivedWorker(id);
+    const workers = await getArchivedWorkers();
+    setArchived(workers);
+    setRecordsByWorker((prev) => { const next = { ...prev }; delete next[id]; return next; });
     if (expandedId === id) setExpandedId(null);
     setConfirmId(null);
     setConfirmAction(null);
   }
 
   function workerStats(workerId: string) {
-    const recs = getAttendanceByWorker(workerId);
+    const recs = recordsByWorker[workerId] || [];
     return {
-      total: recs.length,
+      total:   recs.length,
       present: recs.filter((r) => r.status === 'present').length,
       absent:  recs.filter((r) => r.status === 'absent').length,
       late:    recs.filter((r) => r.status === 'late').length,
@@ -83,8 +95,9 @@ export default function ArchivePage() {
     };
   }
 
-  const pagedRecords = records.slice(0, recordPage * PAGE_SIZE);
-  const hasMore = pagedRecords.length < records.length;
+  const expandedRecords = expandedId ? (recordsByWorker[expandedId] || []) : [];
+  const pagedRecords = expandedRecords.slice(0, recordPage * PAGE_SIZE);
+  const hasMore = pagedRecords.length < expandedRecords.length;
   const confirmWorker = confirmId ? archived.find((w) => w.id === confirmId) : null;
 
   return (
@@ -184,12 +197,12 @@ export default function ArchivePage() {
 
                 {isExpanded && (
                   <div className="border-t border-gray-100">
-                    {records.length === 0 ? (
+                    {expandedRecords.length === 0 ? (
                       <p className="text-center text-gray-400 py-6 text-sm">{t.no_attendance_records}</p>
                     ) : (
                       <>
                         <div className="px-4 py-2 bg-gray-50 text-sm font-medium text-gray-600 flex gap-4 flex-wrap">
-                          <span>{t.records_total} {records.length}</span>
+                          <span>{t.records_total} {expandedRecords.length}</span>
                           <span className="text-green-700">{t.present}: {stats.present}</span>
                           <span className="text-red-700">{t.absent}: {stats.absent}</span>
                           <span className="text-yellow-700">{t.late}: {stats.late}</span>
@@ -230,7 +243,7 @@ export default function ArchivePage() {
                           <div className="text-center py-3">
                             <button onClick={() => setRecordPage((p) => p + 1)}
                               className="text-blue-600 hover:text-blue-800 text-sm underline">
-                              {t.show_more} ({records.length - pagedRecords.length})
+                              {t.show_more} ({expandedRecords.length - pagedRecords.length})
                             </button>
                           </div>
                         )}

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { logout, getStoredPassword, setStoredPassword } from '../lib/auth';
+import { logout } from '../lib/auth';
 import { useLang } from './LangProvider';
 import { Lang } from '../lib/lang';
 
@@ -12,7 +12,6 @@ export default function Navbar() {
   const router = useRouter();
   const { lang, t, setLang } = useLang();
   const [showPassModal, setShowPassModal] = useState(false);
-  const [oldPass, setOldPass] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const [passError, setPassError] = useState('');
@@ -33,20 +32,21 @@ export default function Navbar() {
     { code: 'en', label: 'En' },
   ];
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     router.replace('/login');
   }
 
-  function handleChangePassword(e: React.FormEvent) {
+  async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setPassError('');
-    if (oldPass !== getStoredPassword()) { setPassError(t.wrong_pass); return; }
-    if (newPass.length < 4) { setPassError('كلمة المرور قصيرة جداً (4 أحرف على الأقل)'); return; }
+    if (newPass.length < 6) { setPassError('كلمة المرور قصيرة (6 أحرف على الأقل)'); return; }
     if (newPass !== confirmPass) { setPassError('كلمتا المرور غير متطابقتين'); return; }
-    setStoredPassword(newPass);
+    const { supabase } = await import('../lib/supabase');
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) { setPassError(error.message); return; }
     setPassSuccess(true);
-    setTimeout(() => { setShowPassModal(false); setOldPass(''); setNewPass(''); setConfirmPass(''); setPassSuccess(false); }, 1500);
+    setTimeout(() => { setShowPassModal(false); setNewPass(''); setConfirmPass(''); setPassSuccess(false); }, 1500);
   }
 
   return (
@@ -109,11 +109,6 @@ export default function Navbar() {
             ) : (
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t.current_pass}</label>
-                  <input type="password" required value={oldPass} onChange={(e) => setOldPass(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t.new_pass}</label>
                   <input type="password" required value={newPass} onChange={(e) => setNewPass(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
@@ -126,7 +121,7 @@ export default function Navbar() {
                 {passError && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{passError}</p>}
                 <div className="flex gap-3 pt-1">
                   <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium">{t.save}</button>
-                  <button type="button" onClick={() => { setShowPassModal(false); setPassError(''); setOldPass(''); setNewPass(''); setConfirmPass(''); }}
+                  <button type="button" onClick={() => { setShowPassModal(false); setPassError(''); setNewPass(''); setConfirmPass(''); }}
                     className="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg hover:bg-gray-300 font-medium">{t.cancel}</button>
                 </div>
               </form>

@@ -1,31 +1,29 @@
 'use client';
 
-const PASSWORD_KEY = 'pointage_password';
-const SESSION_KEY = 'pointage_session';
-const DEFAULT_PASSWORD = 'admin';
+import { supabase } from './supabase';
 
-export function getStoredPassword(): string {
-  if (typeof window === 'undefined') return DEFAULT_PASSWORD;
-  return localStorage.getItem(PASSWORD_KEY) || DEFAULT_PASSWORD;
+export async function login(email: string, password: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { error: error.message };
+  return { error: null };
 }
 
-export function setStoredPassword(newPassword: string): void {
-  localStorage.setItem(PASSWORD_KEY, newPassword);
+export async function register(email: string, password: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) return { error: error.message };
+  return { error: null };
 }
 
-export function login(password: string): boolean {
-  if (password === getStoredPassword()) {
-    sessionStorage.setItem(SESSION_KEY, 'true');
-    return true;
-  }
-  return false;
+export async function logout(): Promise<void> {
+  await supabase.auth.signOut();
 }
 
-export function logout(): void {
-  sessionStorage.removeItem(SESSION_KEY);
+export async function getSession() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session;
 }
 
-export function isLoggedIn(): boolean {
-  if (typeof window === 'undefined') return false;
-  return sessionStorage.getItem(SESSION_KEY) === 'true';
+export async function getCurrentUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
 }

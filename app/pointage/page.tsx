@@ -34,26 +34,30 @@ export default function PointagePage() {
   };
 
   useEffect(() => {
-    const activeWorkers = getWorkers();
-    setWorkers(activeWorkers);
-    setOffDays(getSettings().weeklyOffDays);
-    loadRecords(selectedDate, activeWorkers);
+    async function init() {
+      const [activeWorkers, settings] = await Promise.all([getWorkers(), getSettings()]);
+      setWorkers(activeWorkers);
+      setOffDays(settings.weeklyOffDays);
+      await loadRecords(selectedDate, activeWorkers);
+    }
+    init();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    loadRecords(selectedDate, workers);
+    if (workers.length > 0) loadRecords(selectedDate, workers);
   }, [selectedDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function loadRecords(date: string, activeWorkers: Worker[]) {
+  async function loadRecords(date: string, activeWorkers: Worker[]) {
     const activeIds = new Set(activeWorkers.map((w) => w.id));
-    setRecords(getAttendanceByDate(date).filter((r) => activeIds.has(r.workerId)));
+    const recs = await getAttendanceByDate(date);
+    setRecords(recs.filter((r) => activeIds.has(r.workerId)));
   }
 
   function getRecord(workerId: string): AttendanceRecord | undefined {
     return records.find((r) => r.workerId === workerId);
   }
 
-  function setStatus(worker: Worker, status: AttendanceStatus) {
+  async function setStatus(worker: Worker, status: AttendanceStatus) {
     const existing = getRecord(worker.id);
     const record: AttendanceRecord = {
       id: existing?.id ?? crypto.randomUUID(),
@@ -64,28 +68,41 @@ export default function PointagePage() {
       checkOut: existing?.checkOut ?? '',
       note: existing?.note ?? '',
     };
-    upsertAttendance(record);
-    loadRecords(selectedDate, workers);
+    await upsertAttendance(record);
+    await loadRecords(selectedDate, workers);
   }
 
-  function setTime(worker: Worker, field: 'checkIn' | 'checkOut', value: string) {
+  async function setTime(worker: Worker, field: 'checkIn' | 'checkOut', value: string) {
     const existing = getRecord(worker.id);
     if (!existing) return;
-    upsertAttendance({ ...existing, [field]: value });
-    loadRecords(selectedDate, workers);
+    await upsertAttendance({ ...existing, [field]: value });
+    await loadRecords(selectedDate, workers);
   }
 
-  function saveNote() {
+  async function saveNote() {
     if (!noteModal) return;
     const existing = getRecord(noteModal.workerId);
     if (!existing) return;
-    upsertAttendance({ ...existing, note: noteModal.note });
-    loadRecords(selectedDate, workers);
+    await upsertAttendance({ ...existing, note: noteModal.note });
+    await loadRecords(selectedDate, workers);
     setNoteModal(null);
   }
 
-  function markAll(status: AttendanceStatus) {
-    workers.forEach((w) => setStatus(w, status));
+  async function markAll(status: AttendanceStatus) {
+    await Promise.all(workers.map(async (w) => {
+      const existing = getRecord(w.id);
+      const record: AttendanceRecord = {
+        id: existing?.id ?? crypto.randomUUID(),
+        workerId: w.id,
+        date: selectedDate,
+        status,
+        checkIn: existing?.checkIn ?? '',
+        checkOut: existing?.checkOut ?? '',
+        note: existing?.note ?? '',
+      };
+      return upsertAttendance(record);
+    }));
+    await loadRecords(selectedDate, workers);
   }
 
   const presentCount = workers.filter((w) => records.find((r) => r.workerId === w.id)?.status === 'present').length;

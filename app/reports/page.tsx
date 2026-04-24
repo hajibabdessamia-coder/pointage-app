@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { getWorkers, getAttendance, getSettings } from '../../lib/store';
 import { Worker, AttendanceRecord, AttendanceStatus } from '../../lib/types';
 import { useLang } from '../../components/LangProvider';
@@ -21,9 +22,13 @@ export default function ReportsPage() {
   const [offDays, setOffDays] = useState<number[]>([5]);
 
   useEffect(() => {
-    setWorkers(getWorkers());
-    setAllRecords(getAttendance());
-    setOffDays(getSettings().weeklyOffDays);
+    async function init() {
+      const [ws, recs, settings] = await Promise.all([getWorkers(), getAttendance(), getSettings()]);
+      setWorkers(ws);
+      setAllRecords(recs);
+      setOffDays(settings.weeklyOffDays);
+    }
+    init();
   }, []);
 
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -52,11 +57,11 @@ export default function ReportsPage() {
   }
 
   function handleExcelWorker(worker: Worker) {
-    exportWorkerExcel(worker, allRecords, year, month, t);
+    exportWorkerExcel(worker, allRecords, year, month, t, offDays);
   }
 
   function handleExcelAll() {
-    exportAllWorkersExcel(workers, allRecords, year, month, t);
+    exportAllWorkersExcel(workers, allRecords, year, month, t, offDays);
   }
 
   const filteredWorkers = selectedWorker === 'all' ? workers : workers.filter((w) => w.id === selectedWorker);
@@ -64,9 +69,15 @@ export default function ReportsPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-blue-900">{t.reports_title}</h2>
-        <p className="text-gray-500 mt-1">{t.reports_sub}</p>
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-900">{t.reports_title}</h2>
+          <p className="text-gray-500 mt-1">{t.reports_sub}</p>
+        </div>
+        <Link href="/reports/annual"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors flex items-center gap-2">
+          📅 {t.view_annual}
+        </Link>
       </div>
 
       <div className="bg-white rounded-xl shadow p-4 mb-5 flex flex-wrap gap-4 items-center">

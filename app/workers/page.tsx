@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getWorkers, saveWorkers, archiveWorker } from '../../lib/store';
+import { getWorkers, addWorker, updateWorker, archiveWorker } from '../../lib/store';
 import { Worker } from '../../lib/types';
 import { useLang } from '../../components/LangProvider';
 
@@ -26,7 +26,7 @@ export default function WorkersPage() {
   const [archiveId, setArchiveId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setWorkers(getWorkers()); }, []);
+  useEffect(() => { getWorkers().then(setWorkers); }, []);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -37,12 +37,15 @@ export default function WorkersPage() {
     reader.readAsDataURL(file);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    let updated: Worker[];
-    if (editId) { updated = workers.map((w) => (w.id === editId ? { ...form, id: editId } : w)); }
-    else { updated = [...workers, { ...form, id: crypto.randomUUID() }]; }
-    saveWorkers(updated); setWorkers(updated);
+    if (editId) {
+      await updateWorker({ ...form, id: editId });
+    } else {
+      await addWorker(form);
+    }
+    const updated = await getWorkers();
+    setWorkers(updated);
     setShowForm(false); setEditId(null); setForm(emptyWorker());
   }
 
@@ -51,8 +54,11 @@ export default function WorkersPage() {
     setEditId(worker.id); setShowForm(true);
   }
 
-  function handleArchiveConfirm(id: string) {
-    archiveWorker(id); setWorkers(getWorkers()); setArchiveId(null);
+  async function handleArchiveConfirm(id: string) {
+    await archiveWorker(id);
+    const updated = await getWorkers();
+    setWorkers(updated);
+    setArchiveId(null);
   }
 
   function handleCancel() { setShowForm(false); setEditId(null); setForm(emptyWorker()); }
