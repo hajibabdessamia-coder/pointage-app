@@ -37,7 +37,7 @@ export default function LoginPage() {
     } else {
       const { error: err } = await login(email, password);
       if (err) {
-        setError(lang === 'ar' ? 'البريد أو كلمة المرور غير صحيحة' : lang === 'fr' ? 'Email ou mot de passe incorrect' : 'Incorrect email or password');
+        setError(err);
       } else {
         router.replace('/');
       }
