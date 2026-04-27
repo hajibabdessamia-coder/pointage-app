@@ -17,6 +17,11 @@ function todayStr() {
   return new Date().toISOString().split('T')[0];
 }
 
+function nowTime() {
+  const d = new Date();
+  return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+}
+
 export default function PointagePage() {
   const { t } = useLang();
   const [selectedDate, setSelectedDate] = useState(todayStr());
@@ -72,10 +77,10 @@ export default function PointagePage() {
     await loadRecords(selectedDate, workers);
   }
 
-  async function setTime(worker: Worker, field: 'checkIn' | 'checkOut', value: string) {
+  async function recordTimeNow(worker: Worker, field: 'checkIn' | 'checkOut') {
     const existing = getRecord(worker.id);
     if (!existing) return;
-    await upsertAttendance({ ...existing, [field]: value });
+    await upsertAttendance({ ...existing, [field]: nowTime() });
     await loadRecords(selectedDate, workers);
   }
 
@@ -159,7 +164,7 @@ export default function PointagePage() {
 
       <div className="bg-white rounded-xl shadow mb-4 p-3 flex flex-wrap gap-2 items-center">
         <span className="text-sm text-gray-600 font-medium">{t.mark_all}</span>
-        {(Object.keys(STATUS_LABELS) as AttendanceStatus[]).map((s) => (
+        {(Object.keys(STATUS_LABELS) as AttendanceStatus[]).filter((s) => s !== 'late').map((s) => (
           <button
             key={s}
             onClick={() => markAll(s)}
@@ -212,7 +217,7 @@ export default function PointagePage() {
                   <td className="px-4 py-3 text-gray-500 text-xs">{worker.position}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-center gap-1 flex-wrap">
-                      {(Object.keys(STATUS_LABELS) as AttendanceStatus[]).map((s) => (
+                      {(Object.keys(STATUS_LABELS) as AttendanceStatus[]).filter((s) => s !== 'late').map((s) => (
                         <button
                           key={s}
                           onClick={() => setStatus(worker, s)}
@@ -228,24 +233,34 @@ export default function PointagePage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <input
-                      type="time"
-                      value={rec?.checkIn || ''}
-                      onChange={(e) => setTime(worker, 'checkIn', e.target.value)}
-                      disabled={!rec}
-                      className="border border-gray-300 rounded px-2 py-1 text-xs w-24 disabled:opacity-40"
-                      dir="ltr"
-                    />
+                    {rec?.checkIn ? (
+                      <span className="font-mono text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded" dir="ltr">
+                        {rec.checkIn}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => recordTimeNow(worker, 'checkIn')}
+                        disabled={!rec}
+                        className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 border border-green-300 hover:bg-green-200 disabled:opacity-40 transition-colors"
+                      >
+                        ⏱ {t.col_checkin}
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <input
-                      type="time"
-                      value={rec?.checkOut || ''}
-                      onChange={(e) => setTime(worker, 'checkOut', e.target.value)}
-                      disabled={!rec}
-                      className="border border-gray-300 rounded px-2 py-1 text-xs w-24 disabled:opacity-40"
-                      dir="ltr"
-                    />
+                    {rec?.checkOut ? (
+                      <span className="font-mono text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-1 rounded" dir="ltr">
+                        {rec.checkOut}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => recordTimeNow(worker, 'checkOut')}
+                        disabled={!rec}
+                        className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 border border-red-300 hover:bg-red-200 disabled:opacity-40 transition-colors"
+                      >
+                        ⏱ {t.col_checkout}
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button
