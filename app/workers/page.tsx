@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getWorkers, addWorker, updateWorker, archiveWorker } from '../../lib/store';
+import { getWorkers, addWorker, updateWorker, archiveWorker, updateWorkerWage } from '../../lib/store';
 import { Worker } from '../../lib/types';
 import { useLang } from '../../components/LangProvider';
-import { getLocalWages, setLocalWage } from '../../lib/localWages';
 
 const emptyWorker = (): Omit<Worker, 'id'> => ({
   name: '', position: '', department: '', phone: '',
@@ -25,13 +24,9 @@ export default function WorkersPage() {
   const [form, setForm] = useState(emptyWorker());
   const [search, setSearch] = useState('');
   const [archiveId, setArchiveId] = useState<string | null>(null);
-  const [wages, setWages] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setWages(getLocalWages());
-    getWorkers().then(setWorkers);
-  }, []);
+  useEffect(() => { getWorkers().then(setWorkers); }, []);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -197,11 +192,17 @@ export default function WorkersPage() {
                       type="number"
                       min="0"
                       step="0.01"
-                      defaultValue={wages[worker.id] ?? 0}
-                      onBlur={(e) => {
+                      defaultValue={worker.dailyWage ?? 0}
+                      onBlur={async (e) => {
                         const val = parseFloat(e.target.value) || 0;
-                        setLocalWage(worker.id, val);
-                        setWages((prev) => ({ ...prev, [worker.id]: val }));
+                        if (val === (worker.dailyWage ?? 0)) return;
+                        const err = await updateWorkerWage(worker.id, val);
+                        if (err) {
+                          alert('خطأ في الحفظ: ' + err);
+                          e.target.value = String(worker.dailyWage ?? 0);
+                        } else {
+                          getWorkers().then(setWorkers);
+                        }
                       }}
                       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                       className="w-24 text-center font-semibold text-blue-700 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent rounded px-1 py-0.5"

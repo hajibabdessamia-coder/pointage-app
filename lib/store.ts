@@ -154,6 +154,7 @@ function dbToWorker(row: Record<string, unknown>): Worker {
     startDate:   row.start_date as string,
     photo:       (row.photo as string) || '',
     archivedAt:  (row.archived_at as string) || undefined,
+    dailyWage:   (row.daily_wage as number) || 0,
   };
 }
 
@@ -168,6 +169,14 @@ function workerToDB(w: Worker): Record<string, unknown> {
     photo:       w.photo || '',
     archived_at: w.archivedAt || null,
   };
+}
+
+export async function updateWorkerWage(workerId: string, dailyWage: number): Promise<string | null> {
+  const { error } = await supabase
+    .from('workers')
+    .update({ daily_wage: dailyWage })
+    .eq('id', workerId);
+  return error ? error.message : null;
 }
 
 function dbToRecord(row: Record<string, unknown>): AttendanceRecord {
