@@ -207,18 +207,19 @@ export default function WorkersPage() {
                   <td className="px-4 py-3 text-gray-600" dir="ltr">{worker.startDate}</td>
                   <td className="px-4 py-3 text-center" dir="ltr">
                     <input
+                      key={worker.id + (wages[worker.id] ?? '')}
                       type="number"
                       min="0"
                       step="0.01"
-                      defaultValue={wages[worker.id] ?? 0}
+                      defaultValue={wages[worker.id] ?? ''}
+                      placeholder="0"
                       onBlur={async (e) => {
                         const val = parseFloat(e.target.value) || 0;
-                        if (val === (wages[worker.id] ?? 0)) return;
                         await saveWage(worker.id, val);
                         setWages((prev) => ({ ...prev, [worker.id]: val }));
                       }}
                       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                      className="w-24 text-center font-semibold text-blue-700 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent rounded px-1 py-0.5"
+                      className="w-28 text-center font-semibold text-blue-700 border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                     />
                   </td>
                   <td className="px-4 py-3 text-center">
