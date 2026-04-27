@@ -196,8 +196,23 @@ export default function WorkersPage() {
                   <td className="px-4 py-3 text-gray-600">{worker.department || '—'}</td>
                   <td className="px-4 py-3 text-gray-600" dir="ltr">{worker.phone || '—'}</td>
                   <td className="px-4 py-3 text-gray-600" dir="ltr">{worker.startDate}</td>
-                  <td className="px-4 py-3 text-center font-semibold text-blue-700" dir="ltr">
-                    {worker.dailyWage ? worker.dailyWage.toFixed(2) : '—'}
+                  <td className="px-4 py-3 text-center" dir="ltr">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      defaultValue={worker.dailyWage ?? 0}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        if (val !== (worker.dailyWage ?? 0)) {
+                          updateWorker({ ...worker, dailyWage: val }).then(() =>
+                            getWorkers().then(setWorkers)
+                          );
+                        }
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                      className="w-24 text-center font-semibold text-blue-700 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent rounded px-1 py-0.5"
+                    />
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button onClick={() => handleEdit(worker)} className="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors ml-2">{t.edit}</button>
