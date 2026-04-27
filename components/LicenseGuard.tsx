@@ -3,61 +3,87 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-type Status = 'loading' | 'active' | 'expired' | 'missing';
+type Status = 'loading' | 'trial' | 'purchased' | 'expired';
 
 export default function LicenseGuard({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
-  const [daysLeft, setDaysLeft] = useState<number>(0);
-  const [expiresAt, setExpiresAt] = useState<string>('');
+  const [trialDaysLeft, setTrialDaysLeft] = useState(3);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { setStatus('missing'); return; }
+    async function check() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      const exp = user.user_metadata?.license_expires as string | undefined;
-      if (!exp) { setStatus('missing'); return; }
+      const meta = user.user_metadata ?? {};
 
-      const expDate = new Date(exp);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const diff = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      // إذا اشترى → وصول دائم
+      if (meta.purchased === true) {
+        setStatus('purchased');
+        return;
+      }
 
-      setExpiresAt(expDate.toLocaleDateString('ar-MA'));
-      setDaysLeft(diff);
-      setStatus(diff > 0 ? 'active' : 'expired');
-    });
+      // إذا لم تبدأ التجربة بعد → ابدأها الآن
+      let trialStart = meta.trial_started_at as string | undefined;
+      if (!trialStart) {
+        trialStart = new Date().toISOString();
+        await supabase.auth.updateUser({ data: { trial_started_at: trialStart } });
+      }
+
+      const startDate = new Date(trialStart);
+      const now = new Date();
+      const daysPassed = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      const daysLeft = Math.ceil(3 - daysPassed);
+
+      if (daysLeft > 0) {
+        setTrialDaysLeft(daysLeft);
+        setStatus('trial');
+      } else {
+        setStatus('expired');
+      }
+    }
+    check();
   }, []);
 
   if (status === 'loading') return null;
 
-  if (status === 'missing' || status === 'expired') {
+  if (status === 'expired') {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4" dir="rtl">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="text-6xl mb-4">{status === 'expired' ? '⏳' : '🔒'}</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            {status === 'expired' ? 'انتهت صلاحية الترخيص' : 'البرنامج غير مفعّل'}
-          </h1>
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center p-4" dir="rtl">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">انتهت الفترة التجريبية</h1>
           <p className="text-gray-500 mb-6 text-sm leading-relaxed">
-            {status === 'expired'
-              ? `انتهت صلاحية ترخيصك بتاريخ ${expiresAt}. تواصل معنا لتجديد الاشتراك والاستمرار في استخدام البرنامج.`
-              : 'هذا البرنامج يحتاج إلى ترخيص. تواصل معنا لتفعيل نسختك.'}
+            لقد استخدمت نسختك التجريبية المجانية لمدة 3 أيام.<br />
+            اشترِ البرنامج مرة واحدة واستخدمه إلى الأبد.
           </p>
-          <div className="bg-blue-50 rounded-xl p-4 space-y-2 text-sm">
-            <p className="font-semibold text-blue-900">للتواصل والتفعيل:</p>
-            <p className="text-blue-700">📞 +212 6XX XXX XXX</p>
-            <p className="text-blue-700">✉️ hajibabdessamia@gmail.com</p>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6">
+            <p className="text-3xl font-bold text-blue-900 mb-1">شراء مرة واحدة</p>
+            <p className="text-blue-600 text-sm">بدون اشتراك شهري — دفعة واحدة فقط</p>
+          </div>
+
+          <div className="space-y-3 text-sm">
+            <p className="font-semibold text-gray-700">تواصل معنا للشراء:</p>
+            <a href="tel:+212600000000"
+              className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-colors">
+              📞 اتصل بنا الآن
+            </a>
+            <a href="mailto:hajibabdessamia@gmail.com"
+              className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition-colors">
+              ✉️ hajibabdessamia@gmail.com
+            </a>
           </div>
         </div>
       </div>
     );
   }
 
+  // trial أو purchased
   return (
     <>
-      {daysLeft <= 30 && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center text-sm text-amber-800" dir="rtl">
-          ⚠️ ينتهي ترخيصك خلال <strong>{daysLeft} يوم</strong> ({expiresAt}) — تواصل معنا للتجديد
+      {status === 'trial' && (
+        <div className="bg-amber-500 text-white px-4 py-2 text-center text-sm font-medium" dir="rtl">
+          🎁 الفترة التجريبية المجانية — يتبقى لك <strong>{trialDaysLeft} {trialDaysLeft === 1 ? 'يوم' : 'أيام'}</strong> — تواصل معنا للشراء: hajibabdessamia@gmail.com
         </div>
       )}
       {children}
