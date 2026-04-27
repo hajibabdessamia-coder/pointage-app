@@ -103,7 +103,7 @@ export default function LicenseGuard({ children }: { children: React.ReactNode }
 
               <div className="border-t pt-4 text-center space-y-2">
                 <p className="text-sm text-gray-600 font-medium">ليس لديك كود؟ تواصل معنا للشراء:</p>
-                <a href="https://wa.me/212600000000"
+                <a href="https://wa.me/212718453620"
                   className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-lg font-semibold text-sm transition-colors">
                   💬 واتساب
                 </a>
