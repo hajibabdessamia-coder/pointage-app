@@ -4,15 +4,32 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 type Status = 'loading' | 'trial' | 'purchased' | 'expired';
+type UserInfo = { id: string; email: string };
 
 export default function LicenseGuard({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>('loading');
   const [trialDaysLeft, setTrialDaysLeft] = useState(3);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [buying, setBuying] = useState(false);
+
+  async function handleBuy() {
+    if (!userInfo) return;
+    setBuying(true);
+    const res = await fetch('/api/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: userInfo.id, userEmail: userInfo.email }),
+    });
+    const { url } = await res.json();
+    if (url) window.location.href = url;
+    else setBuying(false);
+  }
 
   useEffect(() => {
     async function check() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserInfo({ id: user.id, email: user.email ?? '' });
 
       const meta = user.user_metadata ?? {};
 
@@ -62,17 +79,14 @@ export default function LicenseGuard({ children }: { children: React.ReactNode }
             <p className="text-blue-600 text-sm">بدون اشتراك شهري — دفعة واحدة فقط</p>
           </div>
 
-          <div className="space-y-3 text-sm">
-            <p className="font-semibold text-gray-700">تواصل معنا للشراء:</p>
-            <a href="tel:+212600000000"
-              className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition-colors">
-              📞 اتصل بنا الآن
-            </a>
-            <a href="mailto:hajibabdessamia@gmail.com"
-              className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition-colors">
-              ✉️ hajibabdessamia@gmail.com
-            </a>
-          </div>
+          <button
+            onClick={handleBuy}
+            disabled={buying}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-4 rounded-xl font-bold text-lg transition-colors mb-3"
+          >
+            {buying ? '⏳ جاري التوجيه...' : '💳 اشترِ الآن'}
+          </button>
+          <p className="text-xs text-gray-400">دفع آمن عبر Stripe — بطاقة بنكية أو Visa أو Mastercard</p>
         </div>
       </div>
     );
