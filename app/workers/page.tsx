@@ -8,6 +8,7 @@ import { useLang } from '../../components/LangProvider';
 const emptyWorker = (): Omit<Worker, 'id'> => ({
   name: '', position: '', department: '', phone: '',
   startDate: new Date().toISOString().split('T')[0], photo: '',
+  dailyWage: 0,
 });
 
 function Avatar({ photo, name, size = 'md' }: { photo?: string; name: string; size?: 'sm' | 'md' | 'lg' }) {
@@ -41,8 +42,10 @@ export default function WorkersPage() {
     e.preventDefault();
     if (editId) {
       await updateWorker({ ...form, id: editId });
+      await updateWorkerWage(editId, form.dailyWage || 0);
     } else {
-      await addWorker(form);
+      const newWorker = await addWorker(form);
+      if (newWorker) await updateWorkerWage(newWorker.id, form.dailyWage || 0);
     }
     const updated = await getWorkers();
     setWorkers(updated);
@@ -50,7 +53,7 @@ export default function WorkersPage() {
   }
 
   function handleEdit(worker: Worker) {
-    setForm({ name: worker.name, position: worker.position, department: worker.department, phone: worker.phone, startDate: worker.startDate, photo: worker.photo || '' });
+    setForm({ name: worker.name, position: worker.position, department: worker.department, phone: worker.phone, startDate: worker.startDate, photo: worker.photo || '', dailyWage: worker.dailyWage || 0 });
     setEditId(worker.id); setShowForm(true);
   }
 
@@ -122,6 +125,14 @@ export default function WorkersPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">{t.start_date}</label>
                 <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.daily_wage_lbl}</label>
+                <input type="number" min="0" step="0.01"
+                  value={form.dailyWage ?? 0}
+                  onChange={(e) => setForm({ ...form, dailyWage: parseFloat(e.target.value) || 0 })}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00" dir="ltr" />
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium">
