@@ -8,6 +8,7 @@ import { useLang } from '../../components/LangProvider';
 const emptyWorker = (): Omit<Worker, 'id'> => ({
   name: '', position: '', department: '', phone: '',
   startDate: new Date().toISOString().split('T')[0], photo: '',
+  dailyWage: 0,
 });
 
 function Avatar({ photo, name, size = 'md' }: { photo?: string; name: string; size?: 'sm' | 'md' | 'lg' }) {
@@ -50,7 +51,7 @@ export default function WorkersPage() {
   }
 
   function handleEdit(worker: Worker) {
-    setForm({ name: worker.name, position: worker.position, department: worker.department, phone: worker.phone, startDate: worker.startDate, photo: worker.photo || '' });
+    setForm({ name: worker.name, position: worker.position, department: worker.department, phone: worker.phone, startDate: worker.startDate, photo: worker.photo || '', dailyWage: worker.dailyWage || 0 });
     setEditId(worker.id); setShowForm(true);
   }
 
@@ -123,6 +124,14 @@ export default function WorkersPage() {
                 <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t.daily_wage_lbl}</label>
+                <input type="number" min="0" step="0.01"
+                  value={form.dailyWage ?? 0}
+                  onChange={(e) => setForm({ ...form, dailyWage: parseFloat(e.target.value) || 0 })}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00" dir="ltr" />
+              </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium">
                   {editId ? t.save_changes : t.add_worker_btn}
@@ -174,6 +183,7 @@ export default function WorkersPage() {
                 <th className="px-4 py-3 text-right">{t.col_dept}</th>
                 <th className="px-4 py-3 text-right">{t.col_phone}</th>
                 <th className="px-4 py-3 text-right">{t.col_start}</th>
+                <th className="px-4 py-3 text-center">{t.col_daily_wage}</th>
                 <th className="px-4 py-3 text-center">{t.col_actions}</th>
               </tr>
             </thead>
@@ -186,6 +196,9 @@ export default function WorkersPage() {
                   <td className="px-4 py-3 text-gray-600">{worker.department || '—'}</td>
                   <td className="px-4 py-3 text-gray-600" dir="ltr">{worker.phone || '—'}</td>
                   <td className="px-4 py-3 text-gray-600" dir="ltr">{worker.startDate}</td>
+                  <td className="px-4 py-3 text-center font-semibold text-blue-700" dir="ltr">
+                    {worker.dailyWage ? worker.dailyWage.toFixed(2) : '—'}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <button onClick={() => handleEdit(worker)} className="text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-blue-50 transition-colors ml-2">{t.edit}</button>
                     <button onClick={() => setArchiveId(worker.id)} className="text-orange-600 hover:text-orange-800 px-2 py-1 rounded hover:bg-orange-50 transition-colors">{t.archive_btn}</button>

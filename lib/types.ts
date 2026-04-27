@@ -7,6 +7,7 @@ export interface Worker {
   startDate: string;
   photo?: string;
   archivedAt?: string;
+  dailyWage?: number;
 }
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave' | 'annual_leave';

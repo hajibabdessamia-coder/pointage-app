@@ -213,6 +213,7 @@ export default function ReportsPage() {
                     <th className="px-4 py-3 text-center text-purple-700">{t.leave}</th>
                     <th className="px-4 py-3 text-center text-teal-700">{t.annual_leave}</th>
                     <th className="px-4 py-3 text-center text-blue-700">{t.attendance_rate}</th>
+                    <th className="px-4 py-3 text-center text-emerald-700">{t.monthly_salary}</th>
                     <th className="px-4 py-3 text-center">{t.col_report}</th>
                   </tr>
                 </thead>
@@ -243,6 +244,11 @@ export default function ReportsPage() {
                             </div>
                             <span className="text-xs font-medium text-gray-700">{rate}%</span>
                           </div>
+                        </td>
+                        <td className="px-4 py-3 text-center font-bold text-emerald-700" dir="ltr">
+                          {worker.dailyWage
+                            ? (worker.dailyWage * s.present).toFixed(2) + ' د.م'
+                            : '—'}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex gap-1 justify-center">

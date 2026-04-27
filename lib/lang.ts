@@ -91,6 +91,7 @@ const T = {
     annual_print_all: '📄 طباعة السنوي للكل', annual_export_all_excel: '📊 Excel سنوي للكل',
     col_month: 'الشهر', col_working_days: 'أيام العمل', annual_total: 'المجموع السنوي',
     back_to_monthly: '← التقارير الشهرية', view_annual: 'التقارير السنوية ←',
+    daily_wage_lbl: 'الراتب اليومي (درهم)', col_daily_wage: 'الراتب/يوم', monthly_salary: 'الراتب الشهري',
   },
   fr: {
     nav_dashboard: 'Tableau de bord', nav_workers: 'Employés', nav_attendance: 'Pointage',
@@ -159,6 +160,7 @@ const T = {
     annual_print_all: '📄 Imprimer annuel tout', annual_export_all_excel: '📊 Excel annuel tout',
     col_month: 'Mois', col_working_days: 'Jours travaillés', annual_total: 'Total annuel',
     back_to_monthly: '← Rapports mensuels', view_annual: 'Rapports annuels →',
+    daily_wage_lbl: 'Salaire journalier (MAD)', col_daily_wage: 'Salaire/j', monthly_salary: 'Salaire mensuel',
   },
   en: {
     nav_dashboard: 'Dashboard', nav_workers: 'Workers', nav_attendance: 'Attendance',
@@ -227,6 +229,7 @@ const T = {
     annual_print_all: '📄 Print all annual', annual_export_all_excel: '📊 Annual Excel all',
     col_month: 'Month', col_working_days: 'Working Days', annual_total: 'Annual Total',
     back_to_monthly: '← Monthly Reports', view_annual: 'Annual Reports →',
+    daily_wage_lbl: 'Daily Wage (MAD)', col_daily_wage: 'Wage/day', monthly_salary: 'Monthly Salary',
   },
 } as const;
 
