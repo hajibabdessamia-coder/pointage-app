@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import { getWorkers, addWorker, updateWorker, archiveWorker } from '../../lib/store';
 import { Worker } from '../../lib/types';
 import { useLang } from '../../components/LangProvider';
+import { getLocalWages, setLocalWage } from '../../lib/localWages';
 
 const emptyWorker = (): Omit<Worker, 'id'> => ({
   name: '', position: '', department: '', phone: '',
   startDate: new Date().toISOString().split('T')[0], photo: '',
-  dailyWage: 0,
 });
 
 function Avatar({ photo, name, size = 'md' }: { photo?: string; name: string; size?: 'sm' | 'md' | 'lg' }) {
@@ -25,9 +25,13 @@ export default function WorkersPage() {
   const [form, setForm] = useState(emptyWorker());
   const [search, setSearch] = useState('');
   const [archiveId, setArchiveId] = useState<string | null>(null);
+  const [wages, setWages] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { getWorkers().then(setWorkers); }, []);
+  useEffect(() => {
+    setWages(getLocalWages());
+    getWorkers().then(setWorkers);
+  }, []);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -51,7 +55,7 @@ export default function WorkersPage() {
   }
 
   function handleEdit(worker: Worker) {
-    setForm({ name: worker.name, position: worker.position, department: worker.department, phone: worker.phone, startDate: worker.startDate, photo: worker.photo || '', dailyWage: worker.dailyWage || 0 });
+    setForm({ name: worker.name, position: worker.position, department: worker.department, phone: worker.phone, startDate: worker.startDate, photo: worker.photo || '' });
     setEditId(worker.id); setShowForm(true);
   }
 
@@ -124,14 +128,6 @@ export default function WorkersPage() {
                 <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" dir="ltr" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t.daily_wage_lbl}</label>
-                <input type="number" min="0" step="0.01"
-                  value={form.dailyWage ?? 0}
-                  onChange={(e) => setForm({ ...form, dailyWage: parseFloat(e.target.value) || 0 })}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0.00" dir="ltr" />
-              </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium">
                   {editId ? t.save_changes : t.add_worker_btn}
@@ -201,14 +197,11 @@ export default function WorkersPage() {
                       type="number"
                       min="0"
                       step="0.01"
-                      defaultValue={worker.dailyWage ?? 0}
+                      defaultValue={wages[worker.id] ?? 0}
                       onBlur={(e) => {
                         const val = parseFloat(e.target.value) || 0;
-                        if (val !== (worker.dailyWage ?? 0)) {
-                          updateWorker({ ...worker, dailyWage: val }).then(() =>
-                            getWorkers().then(setWorkers)
-                          );
-                        }
+                        setLocalWage(worker.id, val);
+                        setWages((prev) => ({ ...prev, [worker.id]: val }));
                       }}
                       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                       className="w-24 text-center font-semibold text-blue-700 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent rounded px-1 py-0.5"

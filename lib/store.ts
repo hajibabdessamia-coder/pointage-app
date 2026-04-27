@@ -154,7 +154,6 @@ function dbToWorker(row: Record<string, unknown>): Worker {
     startDate:   row.start_date as string,
     photo:       (row.photo as string) || '',
     archivedAt:  (row.archived_at as string) || undefined,
-    dailyWage:   (row.daily_wage as number) || 0,
   };
 }
 
@@ -168,7 +167,6 @@ function workerToDB(w: Worker): Record<string, unknown> {
     start_date:  w.startDate,
     photo:       w.photo || '',
     archived_at: w.archivedAt || null,
-    daily_wage:  w.dailyWage || 0,
   };
 }
 
