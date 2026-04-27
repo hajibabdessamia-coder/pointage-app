@@ -154,7 +154,6 @@ function dbToWorker(row: Record<string, unknown>): Worker {
     startDate:   row.start_date as string,
     photo:       (row.photo as string) || '',
     archivedAt:  (row.archived_at as string) || undefined,
-    dailyWage:   (row.daily_wage as number) || 0,
   };
 }
 
@@ -171,12 +170,19 @@ function workerToDB(w: Worker): Record<string, unknown> {
   };
 }
 
-export async function updateWorkerWage(workerId: string, dailyWage: number): Promise<string | null> {
-  const { error } = await supabase
-    .from('workers')
-    .update({ daily_wage: dailyWage })
-    .eq('id', workerId);
-  return error ? error.message : null;
+// ─── Wages (stored in auth user metadata) ────────────────────────────────────
+
+export async function getWages(): Promise<Record<string, number>> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return {};
+  return (user.user_metadata?.wages as Record<string, number>) ?? {};
+}
+
+export async function saveWage(workerId: string, dailyWage: number): Promise<void> {
+  const current = await getWages();
+  await supabase.auth.updateUser({
+    data: { wages: { ...current, [workerId]: dailyWage } }
+  });
 }
 
 function dbToRecord(row: Record<string, unknown>): AttendanceRecord {

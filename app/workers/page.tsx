@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getWorkers, addWorker, updateWorker, archiveWorker, updateWorkerWage } from '../../lib/store';
+import { getWorkers, addWorker, updateWorker, archiveWorker, getWages, saveWage } from '../../lib/store';
 import { Worker } from '../../lib/types';
 import { useLang } from '../../components/LangProvider';
 
@@ -20,6 +20,7 @@ function Avatar({ photo, name, size = 'md' }: { photo?: string; name: string; si
 export default function WorkersPage() {
   const { t } = useLang();
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [wages, setWages] = useState<Record<string, number>>({});
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyWorker());
@@ -27,7 +28,12 @@ export default function WorkersPage() {
   const [archiveId, setArchiveId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { getWorkers().then(setWorkers); }, []);
+  useEffect(() => {
+    Promise.all([getWorkers(), getWages()]).then(([ws, wg]) => {
+      setWorkers(ws);
+      setWages(wg);
+    });
+  }, []);
 
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -40,27 +46,30 @@ export default function WorkersPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const wage = form.dailyWage || 0;
     if (editId) {
       await updateWorker({ ...form, id: editId });
-      await updateWorkerWage(editId, form.dailyWage || 0);
+      await saveWage(editId, wage);
+      setWages((prev) => ({ ...prev, [editId]: wage }));
     } else {
       const newWorker = await addWorker(form);
-      if (newWorker) await updateWorkerWage(newWorker.id, form.dailyWage || 0);
+      if (newWorker) {
+        await saveWage(newWorker.id, wage);
+        setWages((prev) => ({ ...prev, [newWorker.id]: wage }));
+      }
     }
-    const updated = await getWorkers();
-    setWorkers(updated);
+    getWorkers().then(setWorkers);
     setShowForm(false); setEditId(null); setForm(emptyWorker());
   }
 
   function handleEdit(worker: Worker) {
-    setForm({ name: worker.name, position: worker.position, department: worker.department, phone: worker.phone, startDate: worker.startDate, photo: worker.photo || '', dailyWage: worker.dailyWage || 0 });
+    setForm({ name: worker.name, position: worker.position, department: worker.department, phone: worker.phone, startDate: worker.startDate, photo: worker.photo || '', dailyWage: wages[worker.id] || 0 });
     setEditId(worker.id); setShowForm(true);
   }
 
   async function handleArchiveConfirm(id: string) {
     await archiveWorker(id);
-    const updated = await getWorkers();
-    setWorkers(updated);
+    getWorkers().then(setWorkers);
     setArchiveId(null);
   }
 
@@ -81,7 +90,6 @@ export default function WorkersPage() {
         </button>
       </div>
 
-      {/* Form modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
@@ -147,7 +155,6 @@ export default function WorkersPage() {
         </div>
       )}
 
-      {/* Archive confirm modal */}
       {archiveId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl text-center">
@@ -203,17 +210,12 @@ export default function WorkersPage() {
                       type="number"
                       min="0"
                       step="0.01"
-                      defaultValue={worker.dailyWage ?? 0}
+                      defaultValue={wages[worker.id] ?? 0}
                       onBlur={async (e) => {
                         const val = parseFloat(e.target.value) || 0;
-                        if (val === (worker.dailyWage ?? 0)) return;
-                        const err = await updateWorkerWage(worker.id, val);
-                        if (err) {
-                          alert('خطأ في الحفظ: ' + err);
-                          e.target.value = String(worker.dailyWage ?? 0);
-                        } else {
-                          getWorkers().then(setWorkers);
-                        }
+                        if (val === (wages[worker.id] ?? 0)) return;
+                        await saveWage(worker.id, val);
+                        setWages((prev) => ({ ...prev, [worker.id]: val }));
                       }}
                       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                       className="w-24 text-center font-semibold text-blue-700 border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none bg-transparent rounded px-1 py-0.5"

@@ -6,6 +6,7 @@ import { getWorkers, getAttendance, getSettings } from '../../lib/store';
 import { Worker, AttendanceRecord, AttendanceStatus } from '../../lib/types';
 import { useLang } from '../../components/LangProvider';
 import { exportWorkerExcel, exportAllWorkersExcel } from '../../lib/excel';
+import { getWages } from '../../lib/store';
 
 const STATUS_ICONS: Record<AttendanceStatus, string> = {
   present: '✅', absent: '❌', late: '⏰', leave: '🏖️', annual_leave: '📅',
@@ -20,13 +21,15 @@ export default function ReportsPage() {
   const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<string>('all');
   const [offDays, setOffDays] = useState<number[]>([5]);
+  const [wages, setWages] = useState<Record<string, number>>({});
 
   useEffect(() => {
     async function init() {
-      const [ws, recs, settings] = await Promise.all([getWorkers(), getAttendance(), getSettings()]);
+      const [ws, recs, settings, wg] = await Promise.all([getWorkers(), getAttendance(), getSettings(), getWages()]);
       setWorkers(ws);
       setAllRecords(recs);
       setOffDays(settings.weeklyOffDays);
+      setWages(wg);
     }
     init();
   }, []);
@@ -246,8 +249,8 @@ export default function ReportsPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-center font-bold text-emerald-700" dir="ltr">
-                          {worker.dailyWage
-                            ? (worker.dailyWage * s.present).toFixed(2) + ' د.م'
+                          {wages[worker.id]
+                            ? (wages[worker.id] * s.present).toFixed(2) + ' د.م'
                             : '—'}
                         </td>
                         <td className="px-4 py-3 text-center">
