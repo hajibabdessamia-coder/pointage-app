@@ -12,15 +12,20 @@ export default function AdminToolsPage() {
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true); setError(''); setCode('');
-    const res  = await fetch('/api/generate-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: userId.trim(), adminPassword: password }),
-    });
-    const data = await res.json();
-    if (data.code) setCode(data.code);
-    else setError('كلمة المرور خاطئة أو معرف المستخدم فارغ');
-    setLoading(false);
+    try {
+      const res  = await fetch('/api/generate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: userId.trim(), adminPassword: password }),
+      });
+      const data = await res.json();
+      if (data.code) setCode(data.code);
+      else setError('كلمة المرور خاطئة أو معرف المستخدم فارغ');
+    } catch {
+      setError('حدث خطأ في الاتصال بالخادم — تحقق من إعدادات Vercel');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
