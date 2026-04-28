@@ -111,7 +111,16 @@ export default function LicenseGuard({ children }: { children: React.ReactNode }
                   className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-semibold text-sm transition-colors">
                   ✉️ hajibabdessamia@gmail.com
                 </a>
-                <p className="text-xs text-gray-400 mt-3 font-mono">ID: {userId.slice(0, 8)}...</p>
+                <div className="mt-3 bg-gray-50 rounded-lg p-2">
+                  <p className="text-xs text-gray-400 mb-1">معرّفك (User ID) — أرسله للمسؤول:</p>
+                  <p className="text-xs text-gray-700 font-mono break-all">{userId}</p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(userId)}
+                    className="mt-1 text-xs text-blue-500 hover:text-blue-700 underline"
+                  >
+                    نسخ الـ ID
+                  </button>
+                </div>
               </div>
             </>
           )}
